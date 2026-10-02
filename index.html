@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PharmaTrack: pharmacy stock tracker</title>
+<style>
+:root{--slate:#2F404F;--teal:#3894A1;--bg:#F0F1EE;--mint:#C7DAD3;--amb:#B45309;--ambbg:#FEF3C7;--red:#B91C1C;--redbg:#FEE2E2;--grn:#166534;--grnbg:#DCFCE7}
+*{box-sizing:border-box}
+body{margin:0;display:flex;min-height:100vh;font:15px system-ui,"Segoe UI",Arial,sans-serif;color:var(--slate);background:var(--bg)}
+nav{width:200px;flex-shrink:0;background:var(--slate);color:var(--bg);padding:16px 10px}
+nav h3{margin:0 8px 18px;font-size:18px}nav small{display:block;opacity:.7;font-weight:400;font-size:12px}
+nav a{display:block;padding:10px 12px;margin-bottom:4px;border-radius:8px;cursor:pointer}
+nav a.on{background:var(--teal);color:#fff;font-weight:700}
+nav button{margin-top:20px;width:100%;background:none;border:1px solid #6b7c8a;color:var(--bg);padding:6px;border-radius:6px;cursor:pointer;font-size:12px}
+main{flex:1;min-width:0;padding:20px 24px}
+main a{color:#2a7480;font-weight:600}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.top label{display:flex;align-items:center;gap:8px;margin:0}.top select{width:auto;margin:0}
+h1{margin:6px 0 2px;font-size:24px}h2{margin:0 0 10px;font-size:16px}
+.sub{color:#5d6f7e;margin:2px 0 12px;font-size:13px}
+.panel{background:#fff;border:1px solid var(--mint);border-radius:12px;padding:16px;margin-bottom:14px}
+[hidden]{display:none!important}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;align-items:start}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:14px}
+.card{background:#fff;border:1px solid var(--mint);border-top:4px solid #8a97a3;border-radius:12px;padding:14px}
+.card.amb{border-top-color:var(--amb)}.card.red{border-top-color:var(--red)}
+.card small{display:block;font-weight:700;font-size:12px}.card b{font-size:34px;margin-right:6px}
+label{display:block;font-weight:600;font-size:13px;margin-bottom:10px}
+label.inl{display:flex;align-items:center;gap:8px;max-width:440px;margin-bottom:12px}
+input,select{display:block;width:100%;margin-top:4px;padding:8px;border:1px solid var(--mint);border-radius:6px;background:#fff;color:var(--slate);font:inherit;font-weight:400}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--teal);outline-offset:1px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--mint);vertical-align:top}th{font-size:12px;opacity:.8}
+.sc{overflow-x:auto}
+.b{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;margin:1px 0}
+.b.amb{color:var(--amb);background:var(--ambbg)}.b.red{color:var(--red);background:var(--redbg)}
+.b.grn{color:var(--grn);background:var(--grnbg)}.b.gry{color:var(--slate);background:var(--mint)}
+.cap{text-transform:capitalize}.card.link{cursor:pointer}.card.link:hover{border-color:var(--teal)}.btn.sm{padding:4px 10px;font-size:12px}.ta{color:var(--amb)}.tr{color:var(--red)}
+.btn{display:inline-block;width:auto;background:var(--teal);color:#fff;border:0;padding:9px 16px;border-radius:8px;font:inherit;font-weight:700;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}.bar input{width:220px;margin:0}
+.tab{background:#fff;border:1px solid var(--mint);border-radius:99px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;color:var(--slate)}
+.tab.on{background:var(--slate);color:#fff}
+.ok,.err,.alert{padding:10px 12px;border-radius:8px;margin:10px 0;font-size:13px}
+.ok{background:var(--grnbg);color:var(--grn)}.err{background:var(--redbg);color:var(--red)}.alert{background:var(--ambbg);color:var(--amb)}
+@media(max-width:800px){body{flex-direction:column}nav{width:100%}}
+</style>
+</head>
+<body>
+<nav>
+  <h3>PharmaTrack<small>Pharmacy stock tracker</small></h3>
+  <a data-v="dashboard">Dashboard</a>
+  <a data-v="receive">Receive stock</a>
+  <a data-v="dispense">Dispense</a>
+  <a data-v="inventory">Inventory</a>
+  <a data-v="bincard">Bin card</a>
+  <button id="reset">Reset sample data</button>
+</nav>
+<main>
+  <div class="top"><input id="gs" placeholder="Search items, then press Enter" style="max-width:260px;margin:0"><b>St. Jude Community Pharmacy</b><label>Using as <select id="u"></select></label></div>
+  <div id="view"></div>
+</main>
+<script src="store.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const money=n=>"GH\u20B5 "+n.toFixed(2);
+const fmt=d=>d?d.split("-").reverse().join("/"):"None";
+const dleft=d=>Math.round((new Date(d)-new Date(store.today()))/864e5);
+let view="dashboard",sel="PCM500",flt="all",q="",editId=null;
+const B={low:'<span class="b amb">Low stock</span>',out:'<span class="b red">Out of stock</span>',expiring:'<span class="b red">Expiring soon</span>',ok:'<span class="b grn">In stock</span>',expired:'<span class="b red">Has expired stock</span>'};
+const tbl=(h,rows)=>'<div class="sc"><table><tr>'+h.map(x=>"<th>"+x+"</th>").join("")+"</tr>"+(rows.length?rows.map(r=>"<tr>"+r.map(c=>"<td>"+c+"</td>").join("")+"</tr>").join(""):'<tr><td colspan="'+h.length+'">Nothing to show.</td></tr>')+"</table></div>";
+const lnk=id=>`<a href="#" onclick="go('bincard','${id}');return false">Bin card</a>`;
+const opts=()=>store.getInventory().map(i=>`<option value="${i.id}"${i.id===sel?" selected":""}>${esc(i.name)}</option>`).join("");
+const errs=r=>'<div class="err">'+r.errors.map(esc).join("<br>")+"</div>";
+function go(v,id){view=v;if(id)sel=id;render()}
+function goFlt(k){flt=k;q="";go("inventory")}
+const rcv=id=>`<a href="#" onclick="go('receive','${id}');return false">Receive</a>`;
+const edl=id=>`<a href="#" onclick="editItem('${id}');return false">Edit</a> <a href="#" onclick="delItem('${id}');return false">Delete</a>`;
+function wo(id,b){const r=prompt("Reason for writing off this expired batch?","Expired");if(r===null)return;const x=store.writeOffBatch(id,b,r.trim()||"Expired");if(x.ok)render();else alert(x.errors.join("\n"))}
+function newItem(){editId=null;$("#addf").reset();$("#addf").hidden=false;$("#a_t").textContent="Add new item";$("#a_b").textContent="Save item";$("#msg").innerHTML=""}
+function editItem(id){const it=store.getItem(id);editId=id;$("#addf").hidden=false;$("#a_n").value=it.name;$("#a_u").value=it.unit;$("#a_m").value=it.minLevel;$("#a_c").value=it.costPrice;$("#a_s").value=it.sellingPrice;$("#a_t").textContent="Edit item";$("#a_b").textContent="Save changes";$("#msg").innerHTML="";window.scrollTo(0,0)}
+function delItem(id){if(!confirm("Delete this item?"))return;const r=store.deleteItem(id);if(r.ok)render();else alert(r.errors.join("\n"))}
+
+const V={},BIND={};
+
+/* ---------- Dashboard ---------- */
+V.dashboard=()=>{const d=store.getDashboard();
+return `<h1>Dashboard</h1><p class="sub">Stock alerts as of ${fmt(store.today())}</p>
+<div class="cards">
+<div class="card amb link" onclick="goFlt('low')"><small>Low stock</small><b>${d.lowStock.length}</b><span>items below minimum</span></div>
+<div class="card red link" onclick="goFlt('expiring')"><small>Expiring within 90 days</small><b>${d.expiringSoon.length}</b><span>batches, ${money(d.expiringValue)} at cost</span></div>
+<div class="card link" onclick="goFlt('out')"><small>Out of stock</small><b>${d.outOfStock.length}</b><span>items at zero</span></div>
+<div class="card red link" onclick="goFlt('expired')"><small>Expired</small><b>${d.expired.length}</b><span>batches, ${money(d.expiredValue)} at cost</span></div></div>
+<div class="two">
+<div class="panel"><h2>Low-stock items</h2>${tbl(["Item","Balance","Minimum",""],d.lowStock.map(i=>[esc(i.name),i.balance+" "+i.unit,i.minLevel,lnk(i.id)+" "+rcv(i.id)]))}</div>
+<div class="panel"><h2>Expiring soon</h2>${tbl(["Item","Batch","Expiry","Qty","Days left"],d.expiringSoon.map(b=>[esc(b.itemName),esc(b.batch),fmt(b.expiry),b.qty+" "+b.unit,b.daysLeft]))}</div></div>
+${d.expired.length?`<div class="panel"><h2>Expired stock (cannot be dispensed)</h2>${tbl(["Item","Batch","Expired on","Qty","Value at cost",""],d.expired.map(b=>[esc(b.itemName),esc(b.batch),fmt(b.expiry),b.qty+" "+b.unit,money(b.valueAtCost),`<button class="btn sm" onclick="wo('${b.itemId}','${b.batch}')">Write off</button>`]))}</div>`:""}
+<p class="sub">Total stock value at cost: <b>${money(store.getStockValue())}</b></p>`};
+
+/* ---------- Receive stock ---------- */
+V.receive=()=>`<h1>Receive stock</h1><p class="sub">Every field is required. Saving adds a line to the item's bin card.</p>
+<div class="two"><form class="panel" id="rf">
+<label>Item *<select id="r_item">${opts()}</select></label>
+<label>Supplier *<input id="r_sup"></label>
+<div class="row"><label>Batch number *<input id="r_bat"></label><label>Expiry date *<input type="date" id="r_exp"></label></div>
+<label>Quantity received *<input type="number" min="1" step="1" id="r_qty"></label>
+<div class="row"><label>Cost price per unit (GH\u20B5) *<input type="number" min="0" step="0.01" id="r_cost"></label>
+<label>Selling price per unit (GH\u20B5) *<input type="number" min="0" step="0.01" id="r_sell"></label></div>
+<p class="sub" id="r_m"></p><div id="msg"></div><button class="btn">Save to bin card</button></form>
+<div class="panel"><h2>Recent deliveries</h2><div id="recent"></div></div></div>`;
+BIND.receive=()=>{
+const mg=()=>{const c=parseFloat($("#r_cost").value),s=parseFloat($("#r_sell").value);$("#r_m").textContent=s>0&&c>=0?"Margin: "+((s-c)/s*100).toFixed(1)+"%, profit "+money(s-c)+" per unit":""};
+const rec=()=>{const r=store.getBinCard(sel).filter(m=>m.type==="received").slice(-3).reverse();
+$("#recent").innerHTML=r.length?r.map(m=>`<p><b>${esc(m.batch)}</b>: +${m.qtyIn}<br><small>${esc(m.party)}, exp ${fmt(m.expiry)}, received ${fmt(m.date)}</small></p>`).join(""):'<p class="sub">No deliveries yet.</p>'};
+const f=()=>{const it=store.getItem($("#r_item").value);sel=it.id;$("#r_cost").value=it.costPrice;$("#r_sell").value=it.sellingPrice;rec();mg()};
+$("#r_item").onchange=f;$("#r_cost").oninput=mg;$("#r_sell").oninput=mg;
+$("#rf").onsubmit=e=>{e.preventDefault();
+const r=store.receiveStock({itemId:sel,supplier:$("#r_sup").value.trim(),batch:$("#r_bat").value.trim(),expiry:$("#r_exp").value,qty:parseInt($("#r_qty").value,10),costPrice:parseFloat($("#r_cost").value),sellingPrice:parseFloat($("#r_sell").value)});
+$("#msg").innerHTML=r.ok?'<div class="ok">Saved to the bin card.</div>':errs(r);
+if(r.ok){["#r_sup","#r_bat","#r_exp","#r_qty"].forEach(s=>$(s).value="");rec()}};
+f()};
+
+/* ---------- Dispense ---------- */
+V.dispense=()=>`<h1>Dispense</h1><p class="sub">The earliest-expiry batch is used first. You can dispense down to zero, never below.</p>
+<div class="two"><form class="panel" id="df">
+<label>Item *<select id="d_item">${opts()}</select></label><p id="d_av" class="sub"></p>
+<label>Quantity to dispense *<input type="number" min="1" step="1" id="d_qty"></label>
+<label>Reference (prescription no. or ward requisition) *<input id="d_ref"></label>
+<label>Recipient (optional)<input id="d_rec"></label>
+<div id="d_plan"></div><div id="msg"></div><button class="btn" id="d_btn">Dispense stock</button></form>
+<div class="panel"><h2>Recent dispenses</h2><div id="recent"></div></div></div>`;
+BIND.dispense=()=>{
+const usable=()=>store.getBatches(sel).filter(b=>b.expiry>=store.today());
+const upd=()=>{const it=store.getItem(sel),u=usable(),av=u.reduce((s,b)=>s+b.qty,0),n=parseInt($("#d_qty").value,10);
+$("#d_av").innerHTML="Available: <b>"+av+" "+it.unit+"</b> (unexpired)";
+let h="",bad=false;
+if(n>0){if(n>av){bad=true;h='<div class="err">Cannot dispense '+n+" "+it.unit+". Only "+av+" available.</div>"}
+else{let r=n;h='<p class="sub">Will be taken from:</p>'+u.map(b=>{if(r<=0)return"";const t=Math.min(b.qty,r);r-=t;return"<p><b>"+esc(b.batch)+"</b> (exp "+fmt(b.expiry)+"): "+t+" "+it.unit+"</p>"}).join("")}}
+$("#d_plan").innerHTML=h;$("#d_btn").disabled=bad||!(n>0)};
+const rec=()=>{const r=store.getBinCard(sel).filter(m=>m.type==="dispensed").slice(-5).reverse();
+$("#recent").innerHTML=r.length?r.map(m=>`<p><b>\u2212${m.qtyOut}</b>: ${esc(m.party||m.reference)}<br><small>${esc(m.reference)}, ${esc(m.batch)}, ${fmt(m.date)}, ${esc(m.user)}</small></p>`).join(""):'<p class="sub">No dispenses yet.</p>'};
+$("#d_item").onchange=()=>{sel=$("#d_item").value;upd();rec()};$("#d_qty").oninput=upd;
+$("#df").onsubmit=e=>{e.preventDefault();
+const r=store.dispenseStock({itemId:sel,qty:parseInt($("#d_qty").value,10),reference:$("#d_ref").value.trim(),recipient:$("#d_rec").value.trim()});
+if(r.ok){["#d_qty","#d_ref","#d_rec"].forEach(s=>$(s).value="");upd();rec();$("#msg").innerHTML='<div class="ok">Dispensed: '+r.allocations.map(a=>a.qty+" from "+esc(a.batch)).join(", ")+".</div>"}
+else $("#msg").innerHTML=errs(r)};
+upd();rec()};
+
+/* ---------- Inventory ---------- */
+const invTable=()=>{const rows=store.getInventory().filter(i=>(flt==="all"||i.statuses.includes(flt))&&i.name.toLowerCase().includes(q.toLowerCase()));
+return tbl(["Item","Balance","Minimum","Earliest expiry","Status","Cost (GH\u20B5)","Selling (GH\u20B5)",""],rows.map(i=>[esc(i.name),'<b class="'+(i.statuses.includes("out")?"tr":i.statuses.includes("low")?"ta":"")+'">'+i.balance+" "+i.unit+"</b>",i.minLevel+" "+i.unit,fmt(i.earliestExpiry),i.statuses.map(s=>B[s]).join(" "),i.costPrice.toFixed(2),i.sellingPrice.toFixed(2),lnk(i.id)+" "+edl(i.id)]))};
+V.inventory=()=>{const all=store.getInventory(),c=k=>all.filter(i=>k==="all"||i.statuses.includes(k)).length;
+return `<h1>Inventory</h1><p class="sub">Total stock value at cost: <b>${money(store.getStockValue())}</b></p>
+<div class="bar"><input id="q" placeholder="Search items" value="${esc(q)}">${[["all","All"],["low","Low stock"],["expiring","Expiring soon"],["out","Out of stock"],["expired","Expired"]].map(([k,l])=>`<button class="tab${flt===k?" on":""}" onclick="flt='${k}';render()">${l} (${c(k)})</button>`).join("")}<button class="btn" onclick="newItem()">Add new item</button></div>
+<form class="panel" id="addf" hidden><h2 id="a_t">Add new item</h2><div class="row"><label>Item name *<input id="a_n"></label><label>Unit * (tabs, caps...)<input id="a_u"></label></div>
+<div class="row"><label>Minimum level *<input type="number" min="0" id="a_m"></label><label>Cost (GH\u20B5)<input type="number" step="0.01" min="0" id="a_c"></label><label>Selling (GH\u20B5)<input type="number" step="0.01" min="0" id="a_s"></label></div>
+<div id="msg"></div><button class="btn" id="a_b">Save item</button> <button type="button" class="tab" onclick="$('#addf').hidden=true">Cancel</button></form>
+<div class="panel" id="itbl">${invTable()}</div>`};
+BIND.inventory=()=>{$("#q").oninput=e=>{q=e.target.value;$("#itbl").innerHTML=invTable()};
+$("#addf").onsubmit=e=>{e.preventDefault();
+const r=(editId?store.updateItem.bind(null,editId):store.addItem)({name:$("#a_n").value.trim(),unit:$("#a_u").value.trim(),minLevel:parseInt($("#a_m").value,10),costPrice:parseFloat($("#a_c").value)||0,sellingPrice:parseFloat($("#a_s").value)||0});
+if(r.ok){if(!editId)sel=r.id;editId=null;render()}else $("#msg").innerHTML=errs(r)}};
+
+/* ---------- Bin card ---------- */
+V.bincard=()=>{const it=store.getItem(sel),bal=store.getBalance(sel),bs=store.getBatches(sel),rows=store.getBinCard(sel);
+return `<h1>Bin card</h1><label class="inl">Item <select id="b_item">${opts()}</select></label>
+${bal<it.minLevel?`<div class="alert">Below minimum: ${bal} ${it.unit} on hand, minimum is ${it.minLevel}.</div>`:""}
+<div class="panel"><h2>${esc(it.name)}</h2><p><button class="btn sm" onclick="go('receive')">Receive stock</button> <button class="btn sm" onclick="go('dispense')">Dispense</button></p><p>Balance: <b>${bal} ${it.unit}</b>. Minimum: ${it.minLevel} ${it.unit}.</p>
+<p>Batches on hand: ${bs.map(b=>`<span class="b ${dleft(b.expiry)<=90?"red":"grn"}">${esc(b.batch)}: ${b.qty}, exp ${fmt(b.expiry)}${dleft(b.expiry)<0?" (expired)":""}</span>`).join(" ")||"none"}</p></div>
+<div class="panel"><h2>Stock movement ledger</h2>${tbl(["Date","Type","Supplier / recipient","Batch","Expiry","In","Out","Balance","Recorded by"],rows.map(m=>[fmt(m.date),'<span class="b cap '+(m.type==="received"?"grn":"gry")+'">'+m.type+"</span>",esc(m.party)+"<br><small>"+esc(m.reference)+"</small>",esc(m.batch),fmt(m.expiry),m.qtyIn||"\u2013",m.qtyOut||"\u2013","<b>"+m.balance+"</b>",esc(m.user)]))}
+<p class="sub">The bin card holds quantities, batches and who made each entry. Prices are kept on the item, not the card.</p></div>`};
+BIND.bincard=()=>{$("#b_item").onchange=e=>{sel=e.target.value;render()}};
+
+/* ---------- start up ---------- */
+function render(){
+document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on",a.dataset.v===view));
+$("#u").innerHTML=store.getUsers().map(u=>`<option${u===store.getCurrentUser()?" selected":""}>${esc(u)}</option>`).join("");
+$("#view").innerHTML=V[view]();if(BIND[view])BIND[view]()}
+document.querySelectorAll("nav a").forEach(a=>a.onclick=()=>go(a.dataset.v));
+$("#u").onchange=e=>store.setCurrentUser(e.target.value);
+$("#gs").onkeydown=e=>{if(e.key==="Enter"){q=e.target.value;flt="all";go("inventory");e.target.value=""}};
+$("#reset").onclick=()=>{if(confirm("Reset all data to the sample data?")){store.reset();render()}};
+render();
+</script>
+</body>
+</html>
